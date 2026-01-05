@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Temporary files
+temp/
+*.tmp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files (the calculator was just a test)
+calculator.html
+
+# Build files (if you add any later)
+dist/
+build/
