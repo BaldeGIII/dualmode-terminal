@@ -3,398 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi-5 Controller</title>
+    <title>DualMode Terminal</title>
+
+    <!-- External Libraries CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
-    <style>
-        /* 1. RESET & FULLSCREEN SETUP */
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background: #000;
-            color: #fff;
-            font-family: 'Consolas', monospace;
-            overflow: hidden;
-        }
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 
-        /* 2. FLEX LAYOUT (Header on top, Content fills rest) */
-        #app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        /* 3. HEADER STYLES */
-        #header {
-            height: 50px;
-            background: #111;
-            border-bottom: 1px solid #333;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            flex-shrink: 0;
-        }
-        .title { font-weight: bold; letter-spacing: 1px; color: #eee; }
-
-        /* CONTROLS & TOGGLE */
-        .controls { display: flex; align-items: center; gap: 15px; }
-        .mode-text { font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
-        .mode-text.active { color: #fff; text-shadow: 0 0 8px currentColor; }
-
-        .toggle-bg {
-            width: 50px; height: 26px; background: #333; border-radius: 13px;
-            position: relative; cursor: pointer; transition: 0.3s;
-        }
-        .toggle-circle {
-            width: 20px; height: 20px; background: #fff; border-radius: 50%;
-            position: absolute; top: 3px; left: 3px; transition: 0.3s;
-        }
-        .toggle-bg.agent { background: #d00; }
-        .toggle-bg.agent .toggle-circle { left: 27px; }
-        .toggle-bg.chat { background: #007bff; }
-
-        /* 4. MAIN CONTENT AREA */
-        #main-content {
-            flex-grow: 1;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* 5. TERMINAL CONTAINER */
-        #terminal-container {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            padding: 0;
-            display: none; /* Hidden by default, shown only in agent mode */
-            overflow: hidden;
-        }
-
-        /* 6. CHAT CONTAINER */
-        #chat-container {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: none;
-            flex-direction: column;
-            background: #000;
-        }
-        #chat-container.active { display: flex; }
-
-        /* 7. CHAT MESSAGES AREA */
-        #chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        /* Chat Message Bubbles */
-        .chat-message {
-            display: flex;
-            flex-direction: column;
-            max-width: 80%;
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .chat-message.user {
-            align-self: flex-end;
-        }
-        .chat-message.assistant {
-            align-self: flex-start;
-        }
-
-        .message-header {
-            font-size: 11px;
-            color: #0f0;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .chat-message.user .message-header { color: #007bff; text-align: right; }
-
-        .message-bubble {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 12px 15px;
-            color: #fff;
-            font-family: 'Consolas', monospace;
-            line-height: 1.5;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .chat-message.user .message-bubble {
-            background: #1a2a3a;
-            border-color: #007bff;
-        }
-        .chat-message.assistant .message-bubble {
-            background: #1a1a1a;
-            border-color: #0f0;
-        }
-
-        .message-image {
-            max-width: 100%;
-            border-radius: 4px;
-            margin-top: 8px;
-            border: 1px solid #333;
-        }
-
-        .thinking-indicator {
-            color: #888;
-            font-style: italic;
-            padding: 10px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
-
-        /* 8. CHAT INPUT AREA */
-        #chat-input-area {
-            border-top: 1px solid #333;
-            background: #111;
-            padding: 15px 20px;
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        #chat-input-box {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        #image-preview-container {
-            display: none;
-            position: relative;
-            max-width: 150px;
-        }
-        #image-preview-container.active { display: block; }
-
-        #image-preview {
-            max-width: 100%;
-            max-height: 100px;
-            border-radius: 4px;
-            border: 1px solid #0f0;
-        }
-
-        #remove-image {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #d00;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 20px;
-        }
-
-        #chat-input {
-            background: #000;
-            border: 1px solid #0f0;
-            border-radius: 4px;
-            color: #0f0;
-            font-family: 'Consolas', monospace;
-            font-size: 14px;
-            padding: 10px;
-            resize: none;
-            outline: none;
-            min-height: 40px;
-            max-height: 150px;
-        }
-        #chat-input:focus { border-color: #0f0; box-shadow: 0 0 8px rgba(0,255,0,0.3); }
-
-        .input-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        #attach-btn, #send-btn {
-            background: #1a1a1a;
-            border: 1px solid #0f0;
-            color: #0f0;
-            font-family: 'Consolas', monospace;
-            font-size: 20px;
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #attach-btn:hover, #send-btn:hover {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 12px rgba(0,255,0,0.5);
-        }
-        #send-btn:active { transform: scale(0.95); }
-
-        #file-input { display: none; }
-
-        /* 9. SCROLLBAR STYLING */
-        #chat-messages::-webkit-scrollbar { width: 10px; }
-        #chat-messages::-webkit-scrollbar-track { background: #000; }
-        #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; }
-
-        .xterm-viewport::-webkit-scrollbar { width: 10px; }
-        .xterm-viewport::-webkit-scrollbar-track { background: #000; }
-        .xterm-viewport::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; }
-
-        /* 10. APPROVAL POPUP MODAL */
-        #approval-modal {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(4px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            animation: fadeIn 0.2s ease-in;
-        }
-        #approval-modal.active { display: flex; }
-
-        .approval-dialog {
-            background: #111;
-            border: 2px solid #0f0;
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 700px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
-            animation: slideUp 0.3s ease-out;
-        }
-        @keyframes slideUp {
-            from { transform: translateY(50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .approval-header {
-            color: #ff0;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-        }
-
-        .approval-files {
-            margin: 20px 0;
-        }
-
-        .file-item {
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            overflow: hidden;
-        }
-
-        .file-header {
-            background: #1a1a1a;
-            padding: 10px 15px;
-            color: #0ff;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-lines {
-            color: #888;
-            font-size: 12px;
-        }
-
-        .file-preview {
-            padding: 15px;
-            color: #ccc;
-            font-size: 13px;
-            line-height: 1.5;
-            max-height: 200px;
-            overflow-y: auto;
-            background: #000;
-        }
-
-        .file-preview::-webkit-scrollbar { width: 8px; }
-        .file-preview::-webkit-scrollbar-track { background: #000; }
-        .file-preview::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-
-        .approval-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .approval-btn {
-            flex: 1;
-            padding: 12px 20px;
-            font-family: 'Consolas', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            border: 2px solid;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .approve-btn {
-            background: #0a3a0a;
-            border-color: #0f0;
-            color: #0f0;
-        }
-        .approve-btn:hover {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .reject-btn {
-            background: #3a0a0a;
-            border-color: #f00;
-            color: #f00;
-        }
-        .reject-btn:hover {
-            background: #f00;
-            color: #000;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .btn-shortcut {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-        }
-    </style>
+    <!-- Application CSS -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/sidebar.css">
+    <link rel="stylesheet" href="styles/chat.css">
+    <link rel="stylesheet" href="styles/terminal.css">
+    <link rel="stylesheet" href="styles/code.css">
+    <link rel="stylesheet" href="styles/modals.css">
 </head>
 <body>
-
     <div id="app-container">
+        <!-- Header -->
         <div id="header">
-            <div class="title">RASPBERRY PI 5 // CORE</div>
+            <div class="header-left">
+                <button id="hamburger-btn" title="Toggle Sidebar">☰</button>
+                <div class="title">RASPBERRY PI 5 // CORE</div>
+            </div>
             <div class="controls">
                 <span id="label-chat" class="mode-text active" style="color:#007bff">CHAT (...)</span>
                 <div id="mode-switch" class="toggle-bg chat"><div class="toggle-circle"></div></div>
@@ -402,28 +32,38 @@
             </div>
         </div>
 
-        <div id="main-content">
-            <!-- Chat Interface (for Chat Mode) -->
-            <div id="chat-container" class="active">
-                <div id="chat-messages"></div>
-                <div id="chat-input-area">
-                    <div id="chat-input-box">
-                        <div id="image-preview-container">
-                            <img id="image-preview" alt="Image preview">
-                            <button id="remove-image">×</button>
-                        </div>
-                        <textarea id="chat-input" placeholder="Type your message..."></textarea>
-                    </div>
-                    <div class="input-buttons">
-                        <button id="attach-btn" title="Attach image">📎</button>
-                        <button id="send-btn" title="Send message">▶</button>
-                    </div>
-                    <input type="file" id="file-input" accept="image/*">
+        <div id="main-wrapper">
+            <!-- Left Sidebar -->
+            <div id="sidebar">
+                <div id="sidebar-header">
+                    <button id="new-chat-btn-sidebar">+ NEW CHAT</button>
                 </div>
+                <div id="chats-list"></div>
             </div>
 
-            <!-- Terminal Interface (for Agent Mode) -->
-            <div id="terminal-container"></div>
+            <div id="main-content">
+                <!-- Chat Interface (for Chat Mode) -->
+                <div id="chat-container" class="active">
+                    <div id="chat-messages"></div>
+                    <div id="chat-input-area">
+                        <div id="chat-input-box">
+                            <div id="image-preview-container">
+                                <img id="image-preview" alt="Image preview">
+                                <button id="remove-image">×</button>
+                            </div>
+                            <textarea id="chat-input" placeholder="Type your message..."></textarea>
+                        </div>
+                        <div class="input-buttons">
+                            <button id="attach-btn" title="Attach image">📎</button>
+                            <button id="send-btn" title="Send message">▶</button>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*">
+                    </div>
+                </div>
+
+                <!-- Terminal Interface (for Agent Mode) -->
+                <div id="terminal-container"></div>
+            </div>
         </div>
 
         <!-- Approval Modal -->
@@ -443,336 +83,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal">
+            <div class="confirm-dialog">
+                <div class="confirm-header" id="confirm-title">⚠ Confirm Action</div>
+                <div class="confirm-message" id="confirm-message">Are you sure?</div>
+                <div class="confirm-actions">
+                    <button class="confirm-btn confirm-btn-yes" id="confirm-yes">Yes</button>
+                    <button class="confirm-btn confirm-btn-no" id="confirm-no">No</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- External Libraries JS -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
-    
-    <script>
-        const socket = io();
-        let mode = 'chat';
-        let currentImage = null;
-        let currentImageName = null;
-        let currentImageType = null;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
 
-        // ============ ELEMENTS ============
-        const chatContainer = document.getElementById('chat-container');
-        const terminalContainer = document.getElementById('terminal-container');
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const sendBtn = document.getElementById('send-btn');
-        const attachBtn = document.getElementById('attach-btn');
-        const fileInput = document.getElementById('file-input');
-        const imagePreview = document.getElementById('image-preview');
-        const imagePreviewContainer = document.getElementById('image-preview-container');
-        const removeImageBtn = document.getElementById('remove-image');
-        const btn = document.getElementById('mode-switch');
-        const txtChat = document.getElementById('label-chat');
-        const txtAgent = document.getElementById('label-agent');
-        const approvalModal = document.getElementById('approval-modal');
-        const approvalFilesList = document.getElementById('approval-files-list');
-        const approveBtnModal = document.getElementById('approve-btn');
-        const rejectBtnModal = document.getElementById('reject-btn');
-
-        // ============ TERMINAL SETUP ============
-        const term = new Terminal({
-            theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' },
-            fontSize: 14,
-            cursorBlink: true,
-            fontFamily: 'Consolas, monospace',
-            convertEol: true,
-            scrollback: 10000,
-        });
-
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(terminalContainer);
-
-        // Ensure terminal fills container
-        setTimeout(() => {
-            fitAddon.fit();
-        }, 100);
-
-        window.addEventListener('resize', () => {
-            fitAddon.fit();
-        });
-
-        term.write('\x1b[34mSystem Online. Initializing Display...\x1b[0m\r\n');
-        term.write('Viewport calibrated. Waiting for input...\r\n$ ');
-
-        let currentLine = '';
-        term.onData(e => {
-            if (e === '\r') {
-                term.write('\r\n');
-                socket.emit('command', currentLine);
-                currentLine = '';
-            } else if (e === '\u007F') {
-                if (currentLine.length > 0) {
-                    currentLine = currentLine.slice(0, -1);
-                    term.write('\b \b');
-                }
-            } else {
-                currentLine += e;
-                term.write(e);
-            }
-        });
-
-        socket.on('termOutput', (data) => {
-            term.write(data);
-        });
-
-        // ============ CHAT FUNCTIONS ============
-        function addMessage(text, sender, imageInfo = null) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${sender}`;
-
-            const header = document.createElement('div');
-            header.className = 'message-header';
-            header.textContent = sender === 'user' ? '> USER' : '> ASSISTANT';
-
-            const bubble = document.createElement('div');
-            bubble.className = 'message-bubble';
-
-            if (imageInfo) {
-                const fileInfo = document.createElement('div');
-                fileInfo.style.color = '#888';
-                fileInfo.style.fontSize = '12px';
-                fileInfo.style.marginBottom = '8px';
-                fileInfo.style.padding = '6px 10px';
-                fileInfo.style.background = '#0a0a0a';
-                fileInfo.style.borderRadius = '4px';
-                fileInfo.style.border = '1px solid #333';
-                fileInfo.textContent = `📷 ${imageInfo.name} - ${imageInfo.type}`;
-                bubble.appendChild(fileInfo);
-            }
-
-            const textContent = document.createElement('div');
-            textContent.textContent = text;
-            bubble.appendChild(textContent);
-
-            messageDiv.appendChild(header);
-            messageDiv.appendChild(bubble);
-
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function addThinkingIndicator(withImage = false) {
-            const indicator = document.createElement('div');
-            indicator.className = 'thinking-indicator';
-            indicator.id = 'thinking';
-
-            if (withImage) {
-                indicator.innerHTML = '▓ Processing image (may take 1-5 minutes)...<br><span style="font-size: 12px; color: #666;">Type /cancel to stop</span>';
-            } else {
-                indicator.textContent = '▓ Processing...';
-            }
-
-            chatMessages.appendChild(indicator);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function removeThinkingIndicator() {
-            const indicator = document.getElementById('thinking');
-            if (indicator) indicator.remove();
-        }
-
-        function sendChatMessage() {
-            const text = chatInput.value.trim();
-            if (!text && !currentImage) return;
-
-            // Check if image is present before clearing
-            const hasImage = !!currentImage;
-
-            // Display user message with image info (not full image)
-            const imageInfo = currentImage ? { name: currentImageName, type: currentImageType } : null;
-            addMessage(text || '[Image attachment]', 'user', imageInfo);
-
-            // Send to server (includes full image data)
-            socket.emit('chatMessage', { text, image: currentImage, imageName: currentImageName });
-
-            // Clear input
-            chatInput.value = '';
-            clearImage();
-
-            // Show thinking indicator with cancel hint if image present
-            addThinkingIndicator(hasImage);
-        }
-
-        socket.on('chatResponse', (response) => {
-            removeThinkingIndicator();
-            addMessage(response, 'assistant');
-        });
-
-        // ============ IMAGE HANDLING ============
-        attachBtn.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            currentImageName = file.name;
-            currentImageType = file.type.split('/')[1].toUpperCase();
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                currentImage = event.target.result;
-                imagePreview.src = currentImage;
-                imagePreviewContainer.classList.add('active');
-            };
-            reader.readAsDataURL(file);
-        });
-
-        removeImageBtn.addEventListener('click', clearImage);
-
-        function clearImage() {
-            currentImage = null;
-            currentImageName = null;
-            currentImageType = null;
-            imagePreview.src = '';
-            imagePreviewContainer.classList.remove('active');
-            fileInput.value = '';
-        }
-
-        // ============ INPUT HANDLING ============
-        sendBtn.addEventListener('click', sendChatMessage);
-
-        chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendChatMessage();
-            }
-        });
-
-        // ============ MODE SWITCHING ============
-        btn.addEventListener('click', () => {
-            if (mode === 'chat') {
-                // Switch to Agent Mode
-                mode = 'agent';
-                btn.className = 'toggle-bg agent';
-                txtChat.classList.remove('active');
-                txtAgent.classList.add('active');
-                txtAgent.style.color = '#d00';
-                txtChat.style.color = '#555';
-                term.options.theme = { foreground: '#ff4444', cursor: '#ff4444' };
-
-                // Hide chat, show terminal
-                chatContainer.classList.remove('active');
-                terminalContainer.style.display = 'block';
-
-                // Ensure terminal resizes to fill space
-                setTimeout(() => {
-                    fitAddon.fit();
-                    term.focus();
-                }, 50);
-            } else {
-                // Switch to Chat Mode
-                mode = 'chat';
-                btn.className = 'toggle-bg chat';
-                txtAgent.classList.remove('active');
-                txtChat.classList.add('active');
-                txtChat.style.color = '#007bff';
-                txtAgent.style.color = '#555';
-                term.options.theme = { foreground: '#0f0', cursor: '#0f0' };
-
-                // Show chat, hide terminal
-                chatContainer.classList.add('active');
-                terminalContainer.style.display = 'none';
-                chatInput.focus();
-            }
-            socket.emit('switchMode', mode);
-        });
-
-        // Initial focus
-        chatInput.focus();
-
-        // ============ MODEL INFO UPDATE ============
-        socket.on('modelInfo', (data) => {
-            const { chatModel, agentModel } = data;
-            // Format model names (remove version tags for cleaner display)
-            const chatName = chatModel.split(':')[0].toUpperCase();
-            const agentName = agentModel.split(':')[0].toUpperCase();
-
-            txtChat.textContent = `CHAT (${chatName})`;
-            txtAgent.textContent = `AGENT (${agentName})`;
-        });
-
-        // ============ APPROVAL POPUP ============
-        socket.on('approvalRequest', (data) => {
-            const { files } = data;
-
-            // Clear previous content
-            approvalFilesList.innerHTML = '';
-
-            // Add each file/operation to the list
-            files.forEach(item => {
-                const actionItem = document.createElement('div');
-                actionItem.className = 'file-item';
-
-                if (item.type === 'file') {
-                    // Display file with preview
-                    const fileHeader = document.createElement('div');
-                    fileHeader.className = 'file-header';
-                    fileHeader.innerHTML = `
-                        <span>📄 ${item.name}</span>
-                        <span class="file-lines">${item.content.split('\n').length} lines</span>
-                    `;
-
-                    const filePreview = document.createElement('div');
-                    filePreview.className = 'file-preview';
-                    filePreview.textContent = item.content;
-
-                    actionItem.appendChild(fileHeader);
-                    actionItem.appendChild(filePreview);
-                } else if (item.type === 'operation') {
-                    // Display operation command
-                    const opHeader = document.createElement('div');
-                    opHeader.className = 'file-header';
-                    opHeader.innerHTML = `
-                        <span>⚙️ ${item.command}</span>
-                        <span class="file-lines" style="color: #f90;">OPERATION</span>
-                    `;
-
-                    const opDescription = document.createElement('div');
-                    opDescription.className = 'file-preview';
-                    opDescription.style.color = '#0f0';
-                    opDescription.style.fontFamily = 'Consolas, monospace';
-                    opDescription.textContent = `Will execute: ${item.command}`;
-
-                    actionItem.appendChild(opHeader);
-                    actionItem.appendChild(opDescription);
-                }
-
-                approvalFilesList.appendChild(actionItem);
-            });
-
-            // Show modal
-            approvalModal.classList.add('active');
-        });
-
-        // Approve button click
-        approveBtnModal.addEventListener('click', () => {
-            approvalModal.classList.remove('active');
-            socket.emit('approvalResponse', { approved: true });
-        });
-
-        // Reject button click
-        rejectBtnModal.addEventListener('click', () => {
-            approvalModal.classList.remove('active');
-            socket.emit('approvalResponse', { approved: false });
-        });
-
-        // Keyboard shortcuts (1 = approve, 2 = reject)
-        document.addEventListener('keydown', (e) => {
-            if (approvalModal.classList.contains('active')) {
-                if (e.key === '1') {
-                    approveBtnModal.click();
-                } else if (e.key === '2') {
-                    rejectBtnModal.click();
-                }
-            }
-        });
-    </script>
+    <!-- Application JS Modules -->
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/markdown.js"></script>
+    <script src="scripts/modals.js"></script>
+    <script src="scripts/sidebar.js"></script>
+    <script src="scripts/chat.js"></script>
+    <script src="scripts/terminal.js"></script>
+    <script src="scripts/main.js"></script>
 </body>
 </html>

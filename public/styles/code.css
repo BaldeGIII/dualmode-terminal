@@ -1,0 +1,76 @@
+/* Code Block Styles */
+
+.message-bubble pre {
+    position: relative;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 8px 0;
+    overflow-x: auto;
+}
+
+.message-bubble code {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.message-bubble p code {
+    background: #2a2a2a;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #2a2a2a;
+    border-bottom: 1px solid #333;
+    border-radius: 6px 6px 0 0;
+    margin: 8px 0 0 0;
+}
+
+.code-language {
+    color: #888;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.copy-code-btn {
+    background: #333;
+    border: 1px solid #555;
+    color: #0f0;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+    transition: all 0.2s;
+}
+
+.copy-code-btn:hover {
+    background: #0f0;
+    color: #000;
+    border-color: #0f0;
+}
+
+.copy-code-btn.copied {
+    background: #0a0;
+    color: #fff;
+    border-color: #0a0;
+}
+
+.code-block-wrapper {
+    position: relative;
+    margin: 8px 0;
+}
+
+.code-block-wrapper pre {
+    margin: 0;
+    border-radius: 0 0 6px 6px;
+}
